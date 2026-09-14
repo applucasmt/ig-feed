@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IG Feed - Editor Visual</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        header h1 { font-size: 20px; }
+        header h1 span { color: #EEBC5A; }
+        header .actions { display: flex; gap: 12px; align-items: center; }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: #EEBC5A; color: #0f172a; }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-success { background: #22c55e; color: #fff; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        /* Layout principal: editor + preview lado a lado */
+        .main {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Editor (lateral esquerda) */
+        .editor {
+            background: rgba(30, 41, 59, 0.5);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .section:last-child { border-bottom: none; }
+
+        .section h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            color: #EEBC5A;
+            letter-spacing: 0.1em;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .field {
+            margin-bottom: 14px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .field input[type="text"],
+        .field input[type="number"],
+        .field select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            outline: none;
+            border-color: #EEBC5A;
+        }
+
+        .field input[type="color"] {
+            width: 100%;
+            height: 40px;
+            padding: 4px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .field input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .field input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #EEBC5A;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(238,188,90,0.5);
+        }
+
+        .field-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .field-row label { margin-bottom: 0; }
+        .field-row .value {
+            font-size: 12px;
+            color: #EEBC5A;
+            font-weight: 700;
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle input { display: none; }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255,255,255,0.1);
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background-color: #EEBC5A;
+        }
+
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Preview (lateral direita) */
+        .preview {
+            overflow-y: auto;
+            padding: 24px;
+            background: #0a0a0a;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .preview-header h2 {
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .preview-header .viewport-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .viewport-btn {
+            padding: 8px 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+            color: #94a3b8;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .viewport-btn.active {
+            background: #EEBC5A;
+            color: #0f172a;
+            border-color: #EEBC5A;
+        }
+
+        .preview-frame {
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 2px solid rgba(255,255,255,0.1);
+            min-height: 400px;
+            transition: max-width 0.3s ease;
+            margin: 0 auto;
+        }
+
+        /* Código de embed */
+        .embed-section {
+            margin-top: 24px;
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .embed-section h3 {
+            font-size: 14px;
+            color: #EEBC5A;
+            margin-bottom: 12px;
+        }
+
+        .code-box {
+            background: #000;
+            color: #22c55e;
+            padding: 16px;
+            padding-top: 48px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre;
+            position: relative;
+            line-height: 1.5;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 6px 14px;
+            background: #EEBC5A;
+            color: #0f172a;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* Modal de autenticação */
+        .modal-bg {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .modal {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 420px;
+            width: 100%;
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .modal p {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .modal input:focus {
+            outline: none;
+            border-color: #EEBC5A;
+        }
+
+        .modal .error {
+            color: #ef4444;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            color: #fff;
+            padding: 14px 20px;
+            border-radius: 10px;
+            border-left: 4px solid #EEBC5A;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            font-size: 14px;
+            font-weight: 600;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 10000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success { border-left-color: #22c55e; }
+        .toast.error { border-left-color: #ef4444; }
+
+        .hidden { display: none !important; }
+
+        /* Responsivo */
+        @media (max-width: 900px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+            .editor {
+                max-height: 50vh;
+                border-right: none;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MODAL DE AUTENTICAÇÃO -->
+    <div id="auth-modal" class="modal-bg">
+        <div class="modal">
+            <h2>🔐 Autenticação</h2>
+            <p>Cole sua chave de API (ADMIN_API_KEY) para editar as configurações.</p>
+            <input type="password" id="api-key-input" placeholder="Cole a chave aqui...">
+            <div id="auth-error" class="error hidden"></div>
+            <button class="btn btn-primary" onclick="authenticate()" style="width: 100%;">Entrar</button>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header>
+        <h1>IG <span>Feed</span> — Editor Visual</h1>
+        <div class="actions">
+            <button class="btn btn-secondary btn-sm" onclick="resetConfig()">↺ Restaurar Padrão</button>
+            <button class="btn btn-primary" onclick="saveConfig()" id="save-btn">💾 Salvar</button>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <div class="main">
+        <!-- EDITOR -->
+        <div class="editor">
+            <!-- LAYOUT -->
+            <div class="section">
+                <h3>📐 Layout</h3>
+
+                <div class="field">
+                    <label>Tipo de Layout</label>
+                    <select id="layout" onchange="updateConfig()">
+                        <option value="grid">Grid</option>
+                        <option value="carousel">Carousel</option>
+                        <option value="masonry">Masonry</option>
+                    </select>
+                </div>
+
+                <div class="field-row">
+                    <label>Colunas (desktop)</label>
+                    <span class="value" id="columns-value">4</span>
+                </div>
+                <div class="field">
+                    <input type="range" id="columns" min="1" max="8" value="4" oninput="updateConfig()">
+                </div>
+
+                <div class="field-row">
+                    <label>Colunas (tablet)</label>
+                    <span class="value" id="columnsTablet-value">3</span>
+                </div>
+                <div class="field">
+                    <input type="range" id="columnsTablet" min="1" max="6" value="3" oninput="updateConfig()">
+                </div>
+
+                <div class="field-row">
+                    <label>Colunas (celular)</label>
+                    <span class="value" id="columnsMobile-value">2</span>
+                </div>
+                <div class="field">
+                    <input type="range" id="columnsMobile" min="1" max="4" value="2" oninput="updateConfig()">
+                </div>
+
+                <div class="field-row">
+                    <label>Gap entre cards</label>
+                    <span class="value" id="gap-value">12px</span>
+                </div>
+                <div class="field">
+                    <input type="range" id="gap" min="0" max="40" value="12" oninput="updateConfig()">
+                </div>
+
+                <div class="field-row">
+                    <label>Arredondamento</label>
+                    <span class="value" id="radius-value">12px</span>
+                </div>
+                <div class="field">
+                    <input type="range" id="radius" min="0" max="40" value="12" oninput="updateConfig()">
+                </div>
+
+                <div class="field">
+                    <label>Proporção das imagens</label>
+                    <select id="aspectRatio" onchange="updateConfig()">
+                        <option value="1/1">1:1 (quadrado)</option>
+                        <option value="4/5">4:5 (retrato)</option>
+                        <option value="16/9">16:9 (paisagem)</option>
+                        <option value="3/4">3:4 (vertical)</option>
+                    </select>
+                </div>
+
+                <div class="field-row">
+                    <label>Posts a exibir</label>
+                    <span class="value" id="limit-value">12</span>
+                </div>
+                <div class="field">
+                    <input type="range" id="limit" min="1" max="24" value="12" oninput="updateConfig()">
+                </div>
+            </div>
+
+            <!-- CORES -->
+            <div class="section">
+                <h3>🎨 Cores</h3>
+
+                <div class="field">
+                    <label>Tema</label>
+                    <select id="theme" onchange="updateConfig()">
+                        <option value="dark">Escuro</option>
+                        <option value="light">Claro</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Cor de destaque</label>
+                    <input type="color" id="accentColor" value="#EEBC5A" oninput="updateConfig()">
+                </div>
+
+                <div class="field">
+                    <label>Cor de fundo dos cards</label>
+                    <input type="color" id="bgColor" value="#0f172a" oninput="updateConfig()">
+                </div>
+
+                <div class="field">
+                    <label>Cor do texto</label>
+                    <input type="color" id="textColor" value="#ffffff" oninput="updateConfig()">
+                </div>
+
+                <div class="field-row">
+                    <label>Opacidade do overlay</label>
+                    <span class="value" id="overlayOpacity-value">60%</span>
+                </div>
+                <div class="field">
+                    <input type="range" id="overlayOpacity" min="0" max="100" value="60" oninput="updateConfig()">
+                </div>
+            </div>
+
+            <!-- ELEMENTOS -->
+            <div class="section">
+                <h3>🧩 Elementos</h3>
+
+                <div class="field-row">
+                    <label>Mostrar legenda</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="showCaption" onchange="updateConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label>Mostrar data</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="showDate" onchange="updateConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label>Botão "Ver no Instagram"</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="showButton" checked onchange="updateConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label>Overlay com ícone</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="showOverlay" checked onchange="updateConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- COMPORTAMENTO -->
+            <div class="section">
+                <h3>⚡ Comportamento</h3>
+
+                <div class="field">
+                    <label>Efeito no hover</label>
+                    <select id="hoverEffect" onchange="updateConfig()">
+                        <option value="zoom">Zoom</option>
+                        <option value="fade">Fade</option>
+                        <option value="none">Nenhum</option>
+                    </select>
+                </div>
+
+                <div class="field-row">
+                    <label>Carregar sob demanda</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="lazyLoad" checked onchange="updateConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label>Autoplay (carousel)</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="autoplay" onchange="updateConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label>Delay do autoplay</label>
+                    <span class="value" id="autoplayDelay-value">4s</span>
+                </div>
+                <div class="field">
+                    <input type="range" id="autoplayDelay" min="1000" max="10000" step="500" value="4000" oninput="updateConfig()">
+                </div>
+            </div>
+        </div>
+
+        <!-- PREVIEW -->
+        <div class="preview">
+            <div class="preview-header">
+                <h2>👁️ Preview em Tempo Real</h2>
+                <div class="viewport-btns">
+                    <button class="viewport-btn active" onclick="setViewport('desktop', this)">🖥️ Desktop</button>
+                    <button class="viewport-btn" onclick="setViewport('tablet', this)">📱 Tablet</button>
+                    <button class="viewport-btn" onclick="setViewport('mobile', this)">📱 Mobile</button>
+                </div>
+            </div>
+
+            <div class="preview-frame" id="preview-frame" style="max-width: 100%;">
+                <div id="instagram-feed"></div>
+            </div>
+
+            <!-- Código de embed -->
+            <div class="embed-section">
+                <h3>📋 Código de Incorporação</h3>
+                <div class="code-box">
+                    <button class="copy-btn" onclick="copyCode()">📋 Copiar</button>
+                    <span id="code-content">...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // ============================================================
+        // CONFIGURAÇÃO
+        // ============================================================
+        const API_BASE = 'https://ig-feed-hazel.vercel.app';
+        let apiKey = localStorage.getItem('ig_admin_key') || '';
+        let currentConfig = null;
+
+        // ============================================================
+        // AUTENTICAÇÃO
+        // ============================================================
+        function authenticate() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if (!key) {
+                showAuthError('Cole a chave');
+                return;
+            }
+
+            // Testa a chave chamando o /api/status
+            fetch(API_BASE + '/api/status', {
+                headers: { 'Authorization': 'Bearer ' + key }
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    showAuthError('Chave inválida');
+                    return;
+                }
+                // Chave OK
+                apiKey = key;
+                localStorage.setItem('ig_admin_key', key);
+                document.getElementById('auth-modal').classList.add('hidden');
+                loadConfig();
+            })
+            .catch(err => {
+                showAuthError('Erro de conexão: ' + err.message);
+            });
+        }
+
+        function showAuthError(msg) {
+            const el = document.getElementById('auth-error');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        // ============================================================
+        // CARREGAR CONFIG
+        // ============================================================
+        async function loadConfig() {
+            try {
+                const res = await fetch(API_BASE + '/api/config');
+                const data = await res.json();
+                currentConfig = data.config;
+                applyConfigToForm(currentConfig);
+                updatePreview();
+                updateCode();
+            } catch (err) {
+                showToast('Erro ao carregar: ' + err.message, 'error');
+            }
+        }
+
+        function applyConfigToForm(config) {
+            document.getElementById('layout').value = config.layout;
+            document.getElementById('columns').value = config.columns;
+            document.getElementById('columnsTablet').value = config.columnsTablet;
+            document.getElementById('columnsMobile').value = config.columnsMobile;
+            document.getElementById('gap').value = config.gap;
+            document.getElementById('radius').value = config.radius;
+            document.getElementById('aspectRatio').value = config.aspectRatio;
+            document.getElementById('limit').value = config.limit;
+            document.getElementById('theme').value = config.theme;
+            document.getElementById('accentColor').value = config.accentColor;
+            document.getElementById('bgColor').value = config.bgColor;
+            document.getElementById('textColor').value = config.textColor;
+            document.getElementById('overlayOpacity').value = config.overlayOpacity * 100;
+            document.getElementById('showCaption').checked = config.showCaption;
+            document.getElementById('showDate').checked = config.showDate;
+            document.getElementById('showButton').checked = config.showButton;
+            document.getElementById('showOverlay').checked = config.showOverlay;
+            document.getElementById('hoverEffect').value = config.hoverEffect;
+            document.getElementById('lazyLoad').checked = config.lazyLoad;
+            document.getElementById('autoplay').checked = config.autoplay;
+            document.getElementById('autoplayDelay').value = config.autoplayDelay;
+
+            updateLabels();
+        }
+
+        function updateLabels() {
+            document.getElementById('columns-value').textContent = document.getElementById('columns').value;
+            document.getElementById('columnsTablet-value').textContent = document.getElementById('columnsTablet').value;
+            document.getElementById('columnsMobile-value').textContent = document.getElementById('columnsMobile').value;
+            document.getElementById('gap-value').textContent = document.getElementById('gap').value + 'px';
+            document.getElementById('radius-value').textContent = document.getElementById('radius').value + 'px';
+            document.getElementById('limit-value').textContent = document.getElementById('limit').value;
+            document.getElementById('overlayOpacity-value').textContent = document.getElementById('overlayOpacity').value + '%';
+            document.getElementById('autoplayDelay-value').textContent = (document.getElementById('autoplayDelay').value / 1000) + 's';
+        }
+
+        // ============================================================
+        // ATUALIZAR CONFIG
+        // ============================================================
+        function updateConfig() {
+            currentConfig = {
+                layout: document.getElementById('layout').value,
+                columns: parseInt(document.getElementById('columns').value),
+                columnsTablet: parseInt(document.getElementById('columnsTablet').value),
+                columnsMobile: parseInt(document.getElementById('columnsMobile').value),
+                gap: parseInt(document.getElementById('gap').value),
+                radius: parseInt(document.getElementById('radius').value),
+                aspectRatio: document.getElementById('aspectRatio').value,
+                limit: parseInt(document.getElementById('limit').value),
+                theme: document.getElementById('theme').value,
+                accentColor: document.getElementById('accentColor').value,
+                bgColor: document.getElementById('bgColor').value,
+                textColor: document.getElementById('textColor').value,
+                overlayOpacity: parseInt(document.getElementById('overlayOpacity').value) / 100,
+                showCaption: document.getElementById('showCaption').checked,
+                showDate: document.getElementById('showDate').checked,
+                showButton: document.getElementById('showButton').checked,
+                showOverlay: document.getElementById('showOverlay').checked,
+                hoverEffect: document.getElementById('hoverEffect').value,
+                lazyLoad: document.getElementById('lazyLoad').checked,
+                autoplay: document.getElementById('autoplay').checked,
+                autoplayDelay: parseInt(document.getElementById('autoplayDelay').value)
+            };
+
+            updateLabels();
+            updatePreview();
+            updateCode();
+        }
+
+        // ============================================================
+        // PREVIEW
+        // ============================================================
+        function updatePreview() {
+            const feed = document.getElementById('instagram-feed');
+
+            // Remove inicialização anterior
+            feed.removeAttribute('data-ig-initialized');
+            feed.dataset.igInitialized = '';
+            delete feed.dataset.igInitialized;
+
+            // Aplica atributos
+            feed.setAttribute('data-layout', currentConfig.layout);
+            feed.setAttribute('data-columns', currentConfig.columns);
+            feed.setAttribute('data-columns-tablet', currentConfig.columnsTablet);
+            feed.setAttribute('data-mobile-columns', currentConfig.columnsMobile);
+            feed.setAttribute('data-gap', currentConfig.gap);
+            feed.setAttribute('data-radius', currentConfig.radius);
+            feed.setAttribute('data-aspect-ratio', currentConfig.aspectRatio);
+            feed.setAttribute('data-limit', currentConfig.limit);
+            feed.setAttribute('data-theme', currentConfig.theme);
+            feed.setAttribute('data-show-caption', currentConfig.showCaption);
+            feed.setAttribute('data-show-date', currentConfig.showDate);
+            feed.setAttribute('data-show-button', currentConfig.showButton);
+            feed.setAttribute('data-show-overlay', currentConfig.showOverlay);
+            feed.setAttribute('data-hover-effect', currentConfig.hoverEffect);
+            feed.setAttribute('data-lazy-load', currentConfig.lazyLoad);
+            feed.setAttribute('data-autoplay', currentConfig.autoplay);
+            feed.setAttribute('data-autoplay-delay', currentConfig.autoplayDelay);
+
+            // Aplica CSS variables
+            feed.style.setProperty('--ig-accent', currentConfig.accentColor);
+            feed.style.setProperty('--ig-bg', currentConfig.bgColor);
+            feed.style.setProperty('--ig-text', currentConfig.textColor);
+            feed.style.setProperty('--ig-overlay', hexToRgba('#000000', currentConfig.overlayOpacity));
+
+            // Limpa conteúdo e reinicializa
+            feed.innerHTML = '';
+            setTimeout(() => {
+                delete feed.dataset.igInitialized;
+                if (window.IGFeed && window.IGFeed.init) {
+                    window.IGFeed.init();
+                }
+            }, 100);
+        }
+
+        function setViewport(size, btn) {
+            document.querySelectorAll('.viewport-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const frame = document.getElementById('preview-frame');
+            if (size === 'desktop') frame.style.maxWidth = '100%';
+            if (size === 'tablet') frame.style.maxWidth = '768px';
+            if (size === 'mobile') frame.style.maxWidth = '400px';
+        }
+
+        // ============================================================
+        // GERAR CÓDIGO
+        // ============================================================
+        function updateCode() {
+            const c = currentConfig;
+            const code =
+                '<div id="instagram-feed"\n' +
+                '     data-limit="' + c.limit + '"\n' +
+                '     data-layout="' + c.layout + '"\n' +
+                '     data-columns="' + c.columns + '"\n' +
+                '     data-columns-tablet="' + c.columnsTablet + '"\n' +
+                '     data-mobile-columns="' + c.columnsMobile + '"\n' +
+                '     data-gap="' + c.gap + '"\n' +
+                '     data-radius="' + c.radius + '"\n' +
+                '     data-aspect-ratio="' + c.aspectRatio + '"\n' +
+                '     data-theme="' + c.theme + '"\n' +
+                '     data-show-caption="' + c.showCaption + '"\n' +
+                '     data-show-date="' + c.showDate + '"\n' +
+                '     data-show-button="' + c.showButton + '"\n' +
+                '     data-hover-effect="' + c.hoverEffect + '"\n' +
+                '     data-autoplay="' + c.autoplay + '">\n' +
+                '</div>\n' +
+                '<style>\n' +
+                '    #instagram-feed {\n' +
+                '        --ig-accent: ' + c.accentColor + ';\n' +
+                '        --ig-bg: ' + c.bgColor + ';\n' +
+                '        --ig-text: ' + c.textColor + ';\n' +
+                '    }\n' +
+                '</style>\n' +
+                '<script src="' + API_BASE + '/widget.js"><\/script>';
+
+            document.getElementById('code-content').textContent = code;
+        }
+
+        function copyCode() {
+            const text = document.getElementById('code-content').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('✅ Código copiado!', 'success');
+            });
+        }
+
+        // ============================================================
+        // SALVAR CONFIG
+        // ============================================================
+        async function saveConfig() {
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Salvando...';
+
+            try {
+                const res = await fetch(API_BASE + '/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + apiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ config: currentConfig })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showToast('✅ Configuração salva!', 'success');
+                } else {
+                    showToast('❌ ' + (data.error || 'Erro'), 'error');
+                }
+            } catch (err) {
+                showToast('❌ Erro: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 Salvar';
+            }
+        }
+
+        async function resetConfig() {
+            if (!confirm('Restaurar configurações padrão?')) return;
+            try {
+                const res = await fetch(API_BASE + '/api/config');
+                const data = await res.json();
+                currentConfig = data.defaults;
+                applyConfigToForm(currentConfig);
+                updatePreview();
+                updateCode();
+                showToast('↺ Padrão restaurado. Clique em Salvar para aplicar.', 'success');
+            } catch (err) {
+                showToast('Erro: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // HELPERS
+        // ============================================================
+        function hexToRgba(hex, alpha) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        if (apiKey) {
+            document.getElementById('api-key-input').value = apiKey;
+            // Tenta autenticar automaticamente
+            fetch(API_BASE + '/api/status', {
+                headers: { 'Authorization': 'Bearer ' + apiKey }
+            })
+            .then(res => {
+                if (res.ok) {
+                    document.getElementById('auth-modal').classList.add('hidden');
+                    loadConfig();
+                }
+            })
+            .catch(() => {});
+        }
+
+        // Carrega o widget.js
+        const widgetScript = document.createElement('script');
+        widgetScript.src = API_BASE + '/widget.js';
+        document.head.appendChild(widgetScript);
+    </script>
+</body>
+</html>
