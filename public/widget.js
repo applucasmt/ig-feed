@@ -1,47 +1,57 @@
 // ============================================================
-// INSTAGRAM FEED WIDGET v1.0
+// INSTAGRAM FEED WIDGET v2.0
 // ============================================================
-// Uso:
-//   <div id="instagram-feed" data-limit="12"></div>
+// Uso mínimo:
+//   <div id="instagram-feed"></div>
 //   <script src="https://SEU-DOMINIO.vercel.app/widget.js"></script>
+//
+// A configuração é carregada automaticamente do backend (/api/config)
+// e pode ser editada no painel: /admin
 // ============================================================
 
 (function() {
     'use strict';
 
     // ============================================================
-    // CONFIGURAÇÃO PADRÃO
+    // CONFIGURAÇÃO PADRÃO (usada se a API falhar)
     // ============================================================
     const DEFAULTS = {
-        apiBase: '',            // Vazio = mesmo domínio do widget.js
-        layout: 'grid',         // grid | carousel | masonry
+        apiBase: '',
+        layout: 'grid',
         limit: 12,
         columns: 4,
         columnsTablet: 3,
         columnsMobile: 2,
-        gap: 8,
+        gap: 12,
         radius: 12,
-        aspectRatio: '1/1',     // 1/1, 4/5, 16/9
+        aspectRatio: '1/1',
         showCaption: false,
         showDate: false,
         showButton: true,
         showOverlay: true,
         autoplay: false,
         autoplayDelay: 4000,
-        hoverEffect: 'zoom',    // zoom | fade | none
+        hoverEffect: 'zoom',
         lazyLoad: true,
-        theme: 'dark'
+        theme: 'dark',
+        accentColor: '#EEBC5A',
+        bgColor: '#0f172a',
+        textColor: '#ffffff',
+        overlayOpacity: 0.6
     };
+
+    // Cache da config (para não fazer fetch toda vez)
+    let globalConfig = null;
+    let configPromise = null;
 
     // ============================================================
     // INICIALIZAÇÃO
     // ============================================================
     function init() {
-        // Encontra todos os containers
         const containers = document.querySelectorAll('[id^="instagram-feed"], .ig-feed');
 
         containers.forEach(container => {
-            if (container.dataset.igInitialized) return;
+            if (container.dataset.igInitialized === 'true') return;
             container.dataset.igInitialized = 'true';
 
             setupWidget(container);
@@ -51,64 +61,126 @@
     // ============================================================
     // CONFIGURA UM WIDGET
     // ============================================================
-    function setupWidget(container) {
-        const config = readConfig(container);
+    async function setupWidget(container) {
+        try {
+            // 1. Mostra loading
+            container.classList.add('ig-feed');
+            container.innerHTML = '<div class="ig-loading">' +
+                '<div class="ig-spinner"></div>' +
+                '<p>Carregando feed...</p>' +
+                '</div>';
 
-        // Aplica variáveis CSS
-        applyCSSVariables(container, config);
+            // 2. Carrega a config global (do painel admin)
+            const globalCfg = await loadGlobalConfig(container);
 
-        // Mostra loading
-        container.classList.add('ig-feed');
-        container.classList.add('ig-layout-' + config.layout);
-        container.classList.add('ig-theme-' + config.theme);
-        container.innerHTML = '<div class="ig-loading">' +
-            '<div class="ig-spinner"></div>' +
-            '<p>Carregando feed...</p>' +
-            '</div>';
+            // 3. Mescla: defaults < global < atributos data-* específicos
+            const config = mergeConfigs(DEFAULTS, globalCfg, readDataAttributes(container));
 
-        // Carrega CSS
-        loadCSS(getApiBase(container) + '/widget.css');
+            // 4. Aplica tema e classes
+            container.classList.add('ig-layout-' + config.layout);
+            container.classList.add('ig-theme-' + config.theme);
+            applyCSSVariables(container, config);
 
-        // Busca posts
-        fetchPosts(container, config)
-            .then(posts => {
-                if (posts.length === 0) {
-                    renderEmpty(container);
-                } else {
-                    renderWidget(container, posts, config);
-                }
-            })
-            .catch(err => {
-                console.error('[IG Feed] Erro:', err);
-                renderError(container);
-            });
+            // 5. Carrega o CSS
+            loadCSS(getApiBase(container) + '/widget.css');
+
+            // 6. Busca os posts
+            const posts = await fetchPosts(container, config);
+
+            if (posts.length === 0) {
+                renderEmpty(container);
+                return;
+            }
+
+            // 7. Renderiza
+            renderWidget(container, posts, config);
+
+        } catch (err) {
+            console.error('[IG Feed] Erro:', err);
+            renderError(container);
+        }
     }
 
     // ============================================================
-    // LÊ CONFIGURAÇÃO DOS ATRIBUTOS DATA-*
+    // CARREGA A CONFIG GLOBAL DO BACKEND
     // ============================================================
-    function readConfig(container) {
+    async function loadGlobalConfig(container) {
+        // Se já temos em cache na memória, usa
+        if (globalConfig) return globalConfig;
+
+        // Se já tem uma promise em andamento, espera ela
+        if (configPromise) return configPromise;
+
+        configPromise = (async () => {
+            try {
+                const base = getApiBase(container);
+                const res = await fetch(base + '/api/config', {
+                    cache: 'no-cache'
+                });
+
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                const data = await res.json();
+                if (data.success && data.config) {
+                    globalConfig = data.config;
+                    console.log('[IG Feed] Config carregada do backend:', globalConfig);
+                    return globalConfig;
+                }
+                return null;
+            } catch (err) {
+                console.warn('[IG Feed] Não foi possível carregar config global, usando padrão:', err);
+                return null;
+            } finally {
+                configPromise = null;
+            }
+        })();
+
+        return configPromise;
+    }
+
+    // ============================================================
+    // LÊ CONFIGURAÇÕES DOS ATRIBUTOS DATA-*
+    // ============================================================
+    function readDataAttributes(container) {
         const d = container.dataset;
-        return {
-            apiBase: d.apiBase || DEFAULTS.apiBase,
-            layout: d.layout || DEFAULTS.layout,
-            limit: parseInt(d.limit) || DEFAULTS.limit,
-            columns: parseInt(d.columns) || DEFAULTS.columns,
-            columnsTablet: parseInt(d.columnsTablet) || DEFAULTS.columnsTablet,
-            columnsMobile: parseInt(d.columnsMobile) || DEFAULTS.columnsMobile,
-            gap: parseInt(d.gap) || DEFAULTS.gap,
-            radius: parseInt(d.radius) || DEFAULTS.radius,
-            aspectRatio: d.aspectRatio || DEFAULTS.aspectRatio,
-            showCaption: d.showCaption === 'true',
-            showDate: d.showDate === 'true',
-            showButton: d.showButton !== 'false',
-            showOverlay: d.showOverlay !== 'false',
-            autoplay: d.autoplay === 'true',
-            autoplayDelay: parseInt(d.autoplayDelay) || DEFAULTS.autoplayDelay,
-            hoverEffect: d.hoverEffect || DEFAULTS.hoverEffect,
-            lazyLoad: d.lazyLoad !== 'false',
-            theme: d.theme || DEFAULTS.theme
-        };
+        const attrs = {};
+
+        if (d.apiBase) attrs.apiBase = d.apiBase;
+        if (d.layout) attrs.layout = d.layout;
+        if (d.limit) attrs.limit = parseInt(d.limit);
+        if (d.columns) attrs.columns = parseInt(d.columns);
+        if (d.columnsTablet) attrs.columnsTablet = parseInt(d.columnsTablet);
+        if (d.mobileColumns) attrs.columnsMobile = parseInt(d.mobileColumns);
+        if (d.gap) attrs.gap = parseInt(d.gap);
+        if (d.radius) attrs.radius = parseInt(d.radius);
+        if (d.aspectRatio) attrs.aspectRatio = d.aspectRatio;
+        if (d.showCaption !== undefined) attrs.showCaption = d.showCaption === 'true';
+        if (d.showDate !== undefined) attrs.showDate = d.showDate === 'true';
+        if (d.showButton !== undefined) attrs.showButton = d.showButton !== 'false';
+        if (d.showOverlay !== undefined) attrs.showOverlay = d.showOverlay !== 'false';
+        if (d.autoplay !== undefined) attrs.autoplay = d.autoplay === 'true';
+        if (d.autoplayDelay) attrs.autoplayDelay = parseInt(d.autoplayDelay);
+        if (d.hoverEffect) attrs.hoverEffect = d.hoverEffect;
+        if (d.lazyLoad !== undefined) attrs.lazyLoad = d.lazyLoad !== 'false';
+        if (d.theme) attrs.theme = d.theme;
+
+        return attrs;
+    }
+
+    // ============================================================
+    // MESCLA CONFIGURAÇÕES
+    // ============================================================
+    function mergeConfigs(...configs) {
+        const result = {};
+        configs.forEach(cfg => {
+            if (!cfg) return;
+            Object.keys(cfg).forEach(key => {
+                if (cfg[key] !== undefined && cfg[key] !== null && cfg[key] !== '') {
+                    result[key] = cfg[key];
+                }
+            });
+        });
+        return result;
     }
 
     // ============================================================
@@ -121,6 +193,14 @@
         container.style.setProperty('--ig-gap', config.gap + 'px');
         container.style.setProperty('--ig-radius', config.radius + 'px');
         container.style.setProperty('--ig-aspect', config.aspectRatio);
+
+        // Cores personalizadas
+        if (config.accentColor) container.style.setProperty('--ig-accent', config.accentColor);
+        if (config.bgColor) container.style.setProperty('--ig-bg', config.bgColor);
+        if (config.textColor) container.style.setProperty('--ig-text', config.textColor);
+        if (config.overlayOpacity !== undefined) {
+            container.style.setProperty('--ig-overlay', 'rgba(0, 0, 0, ' + config.overlayOpacity + ')');
+        }
     }
 
     // ============================================================
@@ -136,23 +216,26 @@
     }
 
     // ============================================================
-    // DETECTA O BASE URL DA API
+    // DETECTA BASE URL DA API
     // ============================================================
     function getApiBase(container) {
         if (container.dataset.apiBase) return container.dataset.apiBase;
 
-        // Descobre pela tag <script> que carregou o widget
+        // Procura a tag script do widget
         const scripts = document.querySelectorAll('script[src*="widget.js"]');
         if (scripts.length > 0) {
             const src = scripts[scripts.length - 1].src;
-            return src.replace(/\/widget\.js.*$/, '');
+            // Remove "/widget.js" ou "/widget/widget.js" do final
+            return src
+                .replace(/\/widget\/widget\.js.*$/, '')
+                .replace(/\/widget\.js.*$/, '');
         }
 
         return window.location.origin;
     }
 
     // ============================================================
-    // BUSCA POSTS DA API
+    // BUSCA POSTS
     // ============================================================
     async function fetchPosts(container, config) {
         const base = getApiBase(container);
@@ -169,10 +252,8 @@
     // RENDERIZA O WIDGET
     // ============================================================
     function renderWidget(container, posts, config) {
-        // Limpa loading
         container.innerHTML = '';
 
-        // Cria a estrutura
         const grid = document.createElement('div');
         grid.className = 'ig-grid';
 
@@ -183,10 +264,8 @@
 
         container.appendChild(grid);
 
-        // Lightbox
         setupLightbox(container, posts, config);
 
-        // Carousel (se aplicável)
         if (config.layout === 'carousel') {
             setupCarousel(container, config);
         }
@@ -203,7 +282,6 @@
         item.setAttribute('tabindex', '0');
         item.setAttribute('aria-label', 'Ver publicação: ' + (post.caption || 'sem legenda').substring(0, 60));
 
-        // Imagem
         const img = document.createElement('img');
         img.src = post.thumbnail || post.image || '';
         img.alt = post.caption ? post.caption.substring(0, 100) : 'Publicação do Instagram';
@@ -214,19 +292,17 @@
             this.src = 'data:image/svg+xml;base64,' + btoa(
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
                 '<rect fill="#1e293b" width="100" height="100"/>' +
-                '<text x="50" y="50" fill="#64748b" text-anchor="middle" dy=".3em" font-family="sans-serif" font-size="12">Imagem indisponível</text>' +
+                '<text x="50" y="50" fill="#64748b" text-anchor="middle" dy=".3em" font-family="sans-serif" font-size="12">Indisponível</text>' +
                 '</svg>'
             );
         };
 
         item.appendChild(img);
 
-        // Overlay
         if (config.showOverlay) {
             const overlay = document.createElement('div');
             overlay.className = 'ig-overlay';
 
-            // Ícone de tipo
             if (post.type === 'VIDEO') {
                 overlay.innerHTML += '<div class="ig-icon ig-icon-video"><svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M8 5v14l11-7z"/></svg></div>';
             } else if (post.type === 'CAROUSEL_ALBUM') {
@@ -236,7 +312,6 @@
             item.appendChild(overlay);
         }
 
-        // Legenda
         if (config.showCaption && post.caption) {
             const caption = document.createElement('div');
             caption.className = 'ig-caption';
@@ -244,7 +319,6 @@
             item.appendChild(caption);
         }
 
-        // Eventos
         item.addEventListener('click', () => openLightbox(item.closest('.ig-feed'), index));
         item.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -270,7 +344,6 @@
         const post = posts[index];
         if (!post) return;
 
-        // Cria o overlay
         const lb = document.createElement('div');
         lb.className = 'ig-lightbox';
         lb.setAttribute('role', 'dialog');
@@ -296,7 +369,6 @@
         document.body.appendChild(lb);
         document.body.style.overflow = 'hidden';
 
-        // Fechar
         const close = () => {
             lb.remove();
             document.body.style.overflow = '';
@@ -311,7 +383,6 @@
         lb.querySelector('.ig-lightbox-overlay').addEventListener('click', close);
         document.addEventListener('keydown', onKey);
 
-        // Foco acessível
         setTimeout(() => lb.querySelector('.ig-lightbox-close').focus(), 50);
     }
 
@@ -346,17 +417,15 @@
         prev.addEventListener('click', () => goTo(currentIndex - 1));
         next.addEventListener('click', () => goTo(currentIndex + 1));
 
-        // Autoplay
         if (config.autoplay) {
-            let timer = setInterval(() => goTo(currentIndex + 1), config.autoplayDelay);
+            let timer = setInterval(() => goTo(currentIndex + 1), config.autoplayDelay || 4000);
 
             container.addEventListener('mouseenter', () => clearInterval(timer));
             container.addEventListener('mouseleave', () => {
-                timer = setInterval(() => goTo(currentIndex + 1), config.autoplayDelay);
+                timer = setInterval(() => goTo(currentIndex + 1), config.autoplayDelay || 4000);
             });
         }
 
-        // Swipe
         let startX = 0;
         container.addEventListener('touchstart', (e) => {
             startX = e.touches[0].clientX;
@@ -400,7 +469,7 @@
     }
 
     // ============================================================
-    // INICIALIZA
+    // INIT
     // ============================================================
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -408,6 +477,12 @@
         init();
     }
 
-    // Expõe API pública
-    window.IGFeed = { init: init };
+    // API pública
+    window.IGFeed = {
+        init: init,
+        clearCache: () => {
+            globalConfig = null;
+            configPromise = null;
+        }
+    };
 })();
