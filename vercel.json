@@ -15,7 +15,8 @@
       "source": "/widget.css",
       "headers": [
         { "key": "Content-Type", "value": "text/css; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" }
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     },
     {
@@ -33,12 +34,6 @@
     { "source": "/demo", "destination": "/public/demo.html" },
     { "source": "/widget.js", "destination": "/widget/widget.js" },
     { "source": "/widget.css", "destination": "/widget/widget.css" }
-  ],
-  "crons": [
-    {
-      "path": "/api/sync",
-      "schedule": "0 8 * * *"
-    }
   ],
   "functions": {
     "api/*.js": {
