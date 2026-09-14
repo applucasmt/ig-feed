@@ -1,1 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IG Feed - Painel Administrativo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { font-size: 28px; margin-bottom: 24px; }
+        h1 span { color: #EEBC5A; }
+        .card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+        .card h2 { font-size: 18px; margin-bottom: 16px; color: #EEBC5A; }
+        .status-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .status-row:last-child { border: none; }
+        .status-row .label { color: #94a3b8; }
+        .status-row .value { font-weight: 600; }
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .dot.green { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .dot.red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+        .dot.yellow { background: #eab308; box-shadow: 0 0 8px #eab308; }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 8px;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: #EEBC5A; color: #0f172a; }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
+        .code-box {
+            background: #000;
+            color: #22c55e;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+            margin-top: 12px;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 12px;
+            background: #EEBC5A;
+            color: #0f172a;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .config-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 8px;
+            font-family: monospace;
+            margin-bottom: 8px;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .alert-info { background: rgba(59,130,246,0.15); border-left: 3px solid #3b82f6; }
+        .alert-warn { background: rgba(234,179,8,0.15); border-left: 3px solid #eab308; }
+        .alert-error { background: rgba(239,68,68,0.15); border-left: 3px solid #ef4444; }
+        #status-loading { text-align: center; padding: 40px; color: #94a3b8; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IG <span>Feed</span> — Painel Administrativo</h1>
 
+        <div id="auth-section" class="card">
+            <h2>Autenticação</h2>
+            <p style="margin-bottom: 12px; color: #94a3b8; font-size: 14px;">
+                Cole sua chave de API (ADMIN_API_KEY) para acessar o painel.
+            </p>
+            <input type="password" id="api-key-input" class="config-input" placeholder="Chave de API...">
+            <button class="btn btn-primary" onclick="saveApiKey()">Entrar</button>
+        </div>
+
+        <div id="dashboard" class="hidden">
+            <div id="status-loading">Carregando status...</div>
+
+            <div id="status-content" class="hidden">
+                <div class="card">
+                    <h2>Status do Sistema</h2>
+                    <div id="status-rows"></div>
+                </div>
+
+                <div class="card">
+                    <h2>Ações</h2>
+                    <button class="btn btn-primary" onclick="forceSync()">Forçar Sincronização</button>
+                    <button class="btn btn-secondary" onclick="fullReset()">Reset Completo</button>
+                    <button class="btn btn-secondary" onclick="loadStatus()">Atualizar Status</button>
+                </div>
+
+                <div class="card">
+                    <h2>Código de Incorporação</h2>
+                    <p style="margin-bottom: 12px; color: #94a3b8; font-size: 14px;">
+                        Cole este código no seu site onde quiser exibir o feed:
+                    </p>
+
+                    <label style="font-size: 12px; color: #94a3b8;">Quantidade de posts</label>
+                    <input type="number" id="cfg-limit" class="config-input" value="12" min="1" max="100">
+
+                    <label style="font-size: 12px; color: #94a3b8;">Layout</label>
+                    <select id="cfg-layout" class="config-input">
+                        <option value="grid">Grid</option>
+                        <option value="carousel">Carousel</option>
+                        <option value="masonry">Masonry</option>
+                    </select>
+
+                    <label style="font-size: 12px; color: #94a3b8;">Colunas (desktop)</label>
+                    <input type="number" id="cfg-columns" class="config-input" value="4" min="1" max="8">
+
+                    <label style="font-size: 12px; color: #94a3b8;">Colunas (mobile)</label>
+                    <input type="number" id="cfg-mobile-columns" class="config-input" value="2" min="1" max="4">
+
+                    <button class="btn btn-primary" onclick="generateCode()">Gerar Código</button>
+
+                    <div class="code-box" id="embed-code">
+                        <button class="copy-btn" onclick="copyCode()">Copiar</button>
+                        <span id="code-content">Clique em "Gerar Código"</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Preview</h2>
+                    <div id="ig-feed-preview" class="ig-feed" data-limit="8" data-columns="4" data-mobile-columns="2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let apiKey = localStorage.getItem('ig_admin_key') || '';
+
+        // Init
+        if (apiKey) {
+            document.getElementById('api-key-input').value = apiKey;
+            showDashboard();
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if (!key) return alert('Cole a chave');
+            apiKey = key;
+            localStorage.setItem('ig_admin_key', key);
+            showDashboard();
+        }
+
+        function showDashboard() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            loadStatus();
+            loadPreview();
+        }
+
+        async function loadStatus() {
+            document.getElementById('status-loading').classList.remove('hidden');
+            document.getElementById('status-content').classList.add('hidden');
+
+            try {
+                const res = await fetch(API_BASE + '/api/status', {
+                    headers: { 'Authorization': 'Bearer ' + apiKey }
+                });
+
+                if (res.status === 401) {
+                    localStorage.removeItem('ig_admin_key');
+                    location.reload();
+                    return;
+                }
+
+                const data = await res.json();
+                renderStatus(data);
+            } catch (e) {
+                document.getElementById('status-rows').innerHTML =
+                    '<div class="alert alert-error">Erro ao conectar: ' + e.message + '</div>';
+                document.getElementById('status-loading').classList.add('hidden');
+                document.getElementById('status-content').classList.remove('hidden');
+            }
+        }
+
+        function renderStatus(data) {
+            const rows = [
+                { label: 'Ambiente', value: data.environment },
+                { label: 'Instagram configurado', value: data.instagram.configured ? 'Sim' : 'Não' },
+                {
+                    label: 'Instagram conectado',
+                    value: data.instagram.connected
+                        ? '<span class="dot green"></span>Conectado (' + (data.instagram.username || '') + ')'
+                        : '<span class="dot red"></span>Desconectado'
+                },
+                { label: 'Posts armazenados', value: data.storage.totalPosts },
+                {
+                    label: 'Última sincronização',
+                    value: data.storage.lastSyncAgo !== null
+                        ? data.storage.lastSyncAgo + 's atrás'
+                        : 'Nunca'
+                },
+                { label: 'Persistente (Upstash)', value: data.storage.persistent ? 'Sim' : 'Não (memória)' },
+                { label: 'Cache HTTP hits', value: data.cache.hits },
+                { label: 'Cache HTTP misses', value: data.cache.misses },
+                { label: 'Duração do cache', value: data.config.cacheDuration + 's' }
+            ];
+
+            if (data.instagram.error) {
+                rows.push({ label: 'Erro Instagram', value: '<span style="color:#ef4444">' + data.instagram.error + '</span>' });
+            }
+
+            document.getElementById('status-rows').innerHTML = rows.map(r =>
+                '<div class="status-row"><span class="label">' + r.label + '</span><span class="value">' + r.value + '</span></div>'
+            ).join('');
+
+            document.getElementById('status-loading').classList.add('hidden');
+            document.getElementById('status-content').classList.remove('hidden');
+        }
+
+        async function forceSync() {
+            if (!confirm('Forçar sincronização agora?')) return;
+            try {
+                const res = await fetch(API_BASE + '/api/refresh', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + apiKey }
+                });
+                const data = await res.json();
+                alert(JSON.stringify(data, null, 2));
+                loadStatus();
+            } catch (e) {
+                alert('Erro: ' + e.message);
+            }
+        }
+
+        async function fullReset() {
+            if (!confirm('Isso apaga TODO o cache e recarrega do zero. Continuar?')) return;
+            try {
+                const res = await fetch(API_BASE + '/api/refresh?wipe=true', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + apiKey }
+                });
+                const data = await res.json();
+                alert(JSON.stringify(data, null, 2));
+                loadStatus();
+            } catch (e) {
+                alert('Erro: ' + e.message);
+            }
+        }
+
+        function generateCode() {
+            const limit = document.getElementById('cfg-limit').value;
+            const layout = document.getElementById('cfg-layout').value;
+            const columns = document.getElementById('cfg-columns').value;
+            const mobileColumns = document.getElementById('cfg-mobile-columns').value;
+
+            const code = '<div id="instagram-feed"\n' +
+                '     data-limit="' + limit + '"\n' +
+                '     data-layout="' + layout + '"\n' +
+                '     data-columns="' + columns + '"\n' +
+                '     data-mobile-columns="' + mobileColumns + '">\n' +
+                '</div>\n' +
+                '<script src="' + API_BASE + '/widget.js"><\/script>';
+
+            document.getElementById('code-content').textContent = code;
+        }
+
+        function copyCode() {
+            const text = document.getElementById('code-content').textContent;
+            navigator.clipboard.writeText(text);
+            alert('Código copiado!');
+        }
+
+        function loadPreview() {
+            const preview = document.getElementById('ig-feed-preview');
+            if (preview.dataset.igInitialized) return;
+            const script = document.createElement('script');
+            script.src = API_BASE + '/widget.js';
+            document.body.appendChild(script);
+        }
+    </script>
+</body>
+</html>
