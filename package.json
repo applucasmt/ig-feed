@@ -1,1 +1,30 @@
-
+{
+  "name": "ig-feed",
+  "version": "1.0.0",
+  "description": "Widget open source de feed do Instagram usando a API oficial da Meta. Sem limitações artificiais, sem marca d'água, sem ads.",
+  "type": "module",
+  "license": "MIT",
+  "author": "IEAD Setor Nova Aliança",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/applucasmt/ig-feed.git"
+  },
+  "keywords": [
+    "instagram",
+    "feed",
+    "widget",
+    "instagram-graph-api",
+    "vercel",
+    "open-source"
+  ],
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
