@@ -1,44 +1,8 @@
 {
-  "version": 2,
-  "name": "ig-feed",
-  "cleanUrls": true,
-  "headers": [
-    {
-      "source": "/widget.js",
-      "headers": [
-        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
-      ]
-    },
-    {
-      "source": "/widget.css",
-      "headers": [
-        { "key": "Content-Type", "value": "text/css; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
-      ]
-    },
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
-      ]
-    }
-  ],
   "rewrites": [
-    { "source": "/", "destination": "/admin/index.html" },
-    { "source": "/admin", "destination": "/admin/index.html" },
-    { "source": "/demo", "destination": "/public/demo.html" },
     { "source": "/widget.js", "destination": "/widget/widget.js" },
-    { "source": "/widget.css", "destination": "/widget/widget.css" }
-  ],
-  "functions": {
-    "api/*.js": {
-      "memory": 512,
-      "maxDuration": 30
-    }
-  }
+    { "source": "/widget.css", "destination": "/widget/widget.css" },
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/demo", "destination": "/public/demo.html" }
+  ]
 }
