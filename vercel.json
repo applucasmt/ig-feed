@@ -1,7 +1,5 @@
 {
   "rewrites": [
-    { "source": "/widget.js", "destination": "/widget/widget.js" },
-    { "source": "/widget.css", "destination": "/widget/widget.css" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/demo", "destination": "/public/demo.html" }
   ]
