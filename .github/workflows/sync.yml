@@ -13,7 +13,7 @@ jobs:
       - name: Trigger Instagram Sync
         run: |
           echo "🔄 Sincronizando posts do Instagram..."
-          curl -X POST https://ig-feed-applucasmt.vercel.app/api/sync \
+                    curl -X POST https://ig-feed-hazel.vercel.app/api/sync \
             -H "Authorization: Bearer acd806eb541793f2" \
             -H "User-Agent: vercel-cron/1.0" \
             -w "\n✅ HTTP Status: %{http_code}\n" \
