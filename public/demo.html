@@ -1,1 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IG Feed - Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 40px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #EEBC5A; margin-bottom: 12px; }
+        p { color: #94a3b8; margin-bottom: 32px; }
+        h2 { margin-top: 48px; margin-bottom: 16px; color: #fff; }
+    </style>
+</head>
+<body>
+    <h1>IG Feed — Demonstração</h1>
+    <p>Layout grid padrão (12 posts)</p>
 
+    <div id="instagram-feed" data-limit="12" data-columns="4" data-mobile-columns="2"></div>
+
+    <h2>Layout Carousel</h2>
+    <div id="instagram-feed-carousel" class="ig-feed" data-limit="8" data-layout="carousel" data-columns="3"></div>
+
+    <h2>Layout Masonry</h2>
+    <div id="instagram-feed-masonry" class="ig-feed" data-limit="12" data-layout="masonry" data-columns="4"></div>
+
+    <script src="/widget.js"></script>
+</body>
+</html>
