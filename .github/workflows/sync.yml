@@ -1,0 +1,20 @@
+name: Instagram Sync
+
+on:
+  schedule:
+    # Roda a cada 6 horas (00h, 06h, 12h, 18h UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Permite rodar manualmente
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Instagram Sync
+        run: |
+          echo "🔄 Sincronizando posts do Instagram..."
+          curl -X POST https://ig-feed-applucasmt.vercel.app/api/sync \
+            -H "Authorization: Bearer SUA_ADMIN_API_KEY_AQUI" \
+            -H "User-Agent: vercel-cron/1.0" \
+            -w "\n✅ HTTP Status: %{http_code}\n" \
+            -sS
