@@ -25,10 +25,10 @@
             margin-bottom: 16px;
         }
         .card h2 { font-size: 18px; margin-bottom: 16px; color: #EEBC5A; }
-        .status-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .status-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 12px; }
         .status-row:last-child { border: none; }
-        .status-row .label { color: #94a3b8; }
-        .status-row .value { font-weight: 600; }
+        .status-row .label { color: #94a3b8; flex-shrink: 0; }
+        .status-row .value { font-weight: 600; text-align: right; word-break: break-word; }
         .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
         .dot.green { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
         .dot.red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
@@ -41,15 +41,19 @@
             cursor: pointer;
             font-size: 14px;
             margin-right: 8px;
+            margin-bottom: 8px;
             transition: opacity 0.2s;
         }
         .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-primary { background: #EEBC5A; color: #0f172a; }
         .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-danger { background: #ef4444; color: #fff; }
         .code-box {
             background: #000;
             color: #22c55e;
             padding: 16px;
+            padding-top: 40px;
             border-radius: 8px;
             font-family: 'Courier New', monospace;
             font-size: 13px;
@@ -57,6 +61,7 @@
             white-space: pre;
             margin-top: 12px;
             position: relative;
+            line-height: 1.5;
         }
         .copy-btn {
             position: absolute;
@@ -80,7 +85,9 @@
             border-radius: 8px;
             font-family: monospace;
             margin-bottom: 8px;
+            font-size: 14px;
         }
+        .config-input:focus { outline: none; border-color: #EEBC5A; }
         .alert {
             padding: 12px 16px;
             border-radius: 8px;
@@ -90,102 +97,207 @@
         .alert-info { background: rgba(59,130,246,0.15); border-left: 3px solid #3b82f6; }
         .alert-warn { background: rgba(234,179,8,0.15); border-left: 3px solid #eab308; }
         .alert-error { background: rgba(239,68,68,0.15); border-left: 3px solid #ef4444; }
+        .alert-success { background: rgba(34,197,94,0.15); border-left: 3px solid #22c55e; }
         #status-loading { text-align: center; padding: 40px; color: #94a3b8; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        label { font-size: 12px; color: #94a3b8; display: block; margin-bottom: 4px; }
+        .preview-container {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: #0a0a0a;
+            min-height: 200px;
+        }
+        @media (max-width: 640px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            body { padding: 16px; }
+            h1 { font-size: 22px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>IG <span>Feed</span> — Painel Administrativo</h1>
 
+        <!-- AUTENTICAÇÃO -->
         <div id="auth-section" class="card">
-            <h2>Autenticação</h2>
+            <h2>🔐 Autenticação</h2>
             <p style="margin-bottom: 12px; color: #94a3b8; font-size: 14px;">
                 Cole sua chave de API (ADMIN_API_KEY) para acessar o painel.
             </p>
-            <input type="password" id="api-key-input" class="config-input" placeholder="Chave de API...">
+            <input type="password" id="api-key-input" class="config-input" placeholder="Cole a chave aqui...">
             <button class="btn btn-primary" onclick="saveApiKey()">Entrar</button>
         </div>
 
+        <!-- DASHBOARD -->
         <div id="dashboard" class="hidden">
-            <div id="status-loading">Carregando status...</div>
+            <div id="status-loading">
+                <div style="font-size: 32px; margin-bottom: 12px;">⏳</div>
+                Carregando status...
+            </div>
 
             <div id="status-content" class="hidden">
+                <!-- Status -->
                 <div class="card">
-                    <h2>Status do Sistema</h2>
+                    <h2>📊 Status do Sistema</h2>
                     <div id="status-rows"></div>
                 </div>
 
+                <!-- Ações -->
                 <div class="card">
-                    <h2>Ações</h2>
-                    <button class="btn btn-primary" onclick="forceSync()">Forçar Sincronização</button>
-                    <button class="btn btn-secondary" onclick="fullReset()">Reset Completo</button>
-                    <button class="btn btn-secondary" onclick="loadStatus()">Atualizar Status</button>
+                    <h2>⚡ Ações</h2>
+                    <button class="btn btn-primary" onclick="forceSync()">🔄 Forçar Sincronização</button>
+                    <button class="btn btn-secondary" onclick="loadStatus()">↻ Atualizar Status</button>
+                    <button class="btn btn-danger" onclick="fullReset()">🗑️ Reset Completo</button>
                 </div>
 
+                <!-- Gerador de Código -->
                 <div class="card">
-                    <h2>Código de Incorporação</h2>
-                    <p style="margin-bottom: 12px; color: #94a3b8; font-size: 14px;">
-                        Cole este código no seu site onde quiser exibir o feed:
+                    <h2>📋 Código de Incorporação</h2>
+                    <p style="margin-bottom: 16px; color: #94a3b8; font-size: 14px;">
+                        Personalize abaixo e cole o código no seu site:
                     </p>
 
-                    <label style="font-size: 12px; color: #94a3b8;">Quantidade de posts</label>
-                    <input type="number" id="cfg-limit" class="config-input" value="12" min="1" max="100">
+                    <div class="grid-2">
+                        <div>
+                            <label>Quantidade de posts</label>
+                            <input type="number" id="cfg-limit" class="config-input" value="12" min="1" max="100">
+                        </div>
+                        <div>
+                            <label>Layout</label>
+                            <select id="cfg-layout" class="config-input">
+                                <option value="grid">Grid</option>
+                                <option value="carousel">Carousel</option>
+                                <option value="masonry">Masonry</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <label style="font-size: 12px; color: #94a3b8;">Layout</label>
-                    <select id="cfg-layout" class="config-input">
-                        <option value="grid">Grid</option>
-                        <option value="carousel">Carousel</option>
-                        <option value="masonry">Masonry</option>
-                    </select>
+                    <div class="grid-3">
+                        <div>
+                            <label>Colunas (desktop)</label>
+                            <input type="number" id="cfg-columns" class="config-input" value="4" min="1" max="8">
+                        </div>
+                        <div>
+                            <label>Colunas (tablet)</label>
+                            <input type="number" id="cfg-columns-tablet" class="config-input" value="3" min="1" max="6">
+                        </div>
+                        <div>
+                            <label>Colunas (mobile)</label>
+                            <input type="number" id="cfg-mobile-columns" class="config-input" value="2" min="1" max="4">
+                        </div>
+                    </div>
 
-                    <label style="font-size: 12px; color: #94a3b8;">Colunas (desktop)</label>
-                    <input type="number" id="cfg-columns" class="config-input" value="4" min="1" max="8">
+                    <div class="grid-3">
+                        <div>
+                            <label>Gap (px)</label>
+                            <input type="number" id="cfg-gap" class="config-input" value="8" min="0" max="50">
+                        </div>
+                        <div>
+                            <label>Border radius (px)</label>
+                            <input type="number" id="cfg-radius" class="config-input" value="12" min="0" max="50">
+                        </div>
+                        <div>
+                            <label>Aspect ratio</label>
+                            <select id="cfg-aspect" class="config-input">
+                                <option value="1/1">1:1 (quadrado)</option>
+                                <option value="4/5">4:5 (retrato)</option>
+                                <option value="16/9">16:9 (paisagem)</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <label style="font-size: 12px; color: #94a3b8;">Colunas (mobile)</label>
-                    <input type="number" id="cfg-mobile-columns" class="config-input" value="2" min="1" max="4">
+                    <div class="grid-3">
+                        <div>
+                            <label>Tema</label>
+                            <select id="cfg-theme" class="config-input">
+                                <option value="dark">Escuro</option>
+                                <option value="light">Claro</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Mostrar legenda</label>
+                            <select id="cfg-show-caption" class="config-input">
+                                <option value="false">Não</option>
+                                <option value="true">Sim</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Mostrar data</label>
+                            <select id="cfg-show-date" class="config-input">
+                                <option value="false">Não</option>
+                                <option value="true">Sim</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <button class="btn btn-primary" onclick="generateCode()">Gerar Código</button>
+                    <button class="btn btn-primary" onclick="generateCode()">⚙️ Gerar Código</button>
+                    <button class="btn btn-secondary" onclick="loadPreview()">👁️ Atualizar Preview</button>
 
                     <div class="code-box" id="embed-code">
-                        <button class="copy-btn" onclick="copyCode()">Copiar</button>
+                        <button class="copy-btn" onclick="copyCode()">📋 Copiar</button>
                         <span id="code-content">Clique em "Gerar Código"</span>
                     </div>
                 </div>
 
+                <!-- Preview -->
                 <div class="card">
-                    <h2>Preview</h2>
-                    <div id="ig-feed-preview" class="ig-feed" data-limit="8" data-columns="4" data-mobile-columns="2"></div>
+                    <h2>👁️ Preview</h2>
+                    <div class="preview-container">
+                        <div id="instagram-feed" 
+                             data-limit="8" 
+                             data-columns="4" 
+                             data-mobile-columns="2"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        const API_BASE = window.location.origin;
+        // ============================================================
+        // CONFIGURAÇÃO
+        // ============================================================
+        const API_BASE = 'https://ig-feed-hazel.vercel.app';
         let apiKey = localStorage.getItem('ig_admin_key') || '';
 
-        // Init
+        // ============================================================
+        // INIT
+        // ============================================================
         if (apiKey) {
             document.getElementById('api-key-input').value = apiKey;
             showDashboard();
         }
 
+        // ============================================================
+        // AUTENTICAÇÃO
+        // ============================================================
         function saveApiKey() {
             const key = document.getElementById('api-key-input').value.trim();
-            if (!key) return alert('Cole a chave');
+            if (!key) return alert('Cole a chave primeiro');
             apiKey = key;
             localStorage.setItem('ig_admin_key', key);
             showDashboard();
+        }
+
+        function logout() {
+            localStorage.removeItem('ig_admin_key');
+            apiKey = '';
+            location.reload();
         }
 
         function showDashboard() {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
             loadStatus();
-            loadPreview();
+            setTimeout(loadPreview, 500);
         }
 
+        // ============================================================
+        // STATUS
+        // ============================================================
         async function loadStatus() {
             document.getElementById('status-loading').classList.remove('hidden');
             document.getElementById('status-content').classList.add('hidden');
@@ -196,8 +308,8 @@
                 });
 
                 if (res.status === 401) {
-                    localStorage.removeItem('ig_admin_key');
-                    location.reload();
+                    alert('Chave de API inválida. Recarregue e cole novamente.');
+                    logout();
                     return;
                 }
 
@@ -213,80 +325,151 @@
 
         function renderStatus(data) {
             const rows = [
-                { label: 'Ambiente', value: data.environment },
-                { label: 'Instagram configurado', value: data.instagram.configured ? 'Sim' : 'Não' },
+                { 
+                    label: 'Ambiente', 
+                    value: data.environment 
+                },
+                { 
+                    label: 'Instagram configurado', 
+                    value: data.instagram.configured ? '✅ Sim' : '❌ Não' 
+                },
                 {
                     label: 'Instagram conectado',
                     value: data.instagram.connected
-                        ? '<span class="dot green"></span>Conectado (' + (data.instagram.username || '') + ')'
+                        ? '<span class="dot green"></span>Conectado' + (data.instagram.username ? ' (@' + data.instagram.username + ')' : '')
                         : '<span class="dot red"></span>Desconectado'
                 },
-                { label: 'Posts armazenados', value: data.storage.totalPosts },
+                { 
+                    label: 'Posts armazenados', 
+                    value: data.storage.totalPosts 
+                },
                 {
                     label: 'Última sincronização',
                     value: data.storage.lastSyncAgo !== null
                         ? data.storage.lastSyncAgo + 's atrás'
                         : 'Nunca'
                 },
-                { label: 'Persistente (Upstash)', value: data.storage.persistent ? 'Sim' : 'Não (memória)' },
-                { label: 'Cache HTTP hits', value: data.cache.hits },
-                { label: 'Cache HTTP misses', value: data.cache.misses },
-                { label: 'Duração do cache', value: data.config.cacheDuration + 's' }
+                { 
+                    label: 'Persistente (Upstash)', 
+                    value: data.storage.persistent ? '✅ Sim' : '⚠️ Não (memória)' 
+                },
+                { 
+                    label: 'Cache HTTP', 
+                    value: data.cache.hits + ' hits / ' + data.cache.misses + ' misses' 
+                },
+                { 
+                    label: 'Duração do cache', 
+                    value: data.config.cacheDuration + 's' 
+                }
             ];
 
             if (data.instagram.error) {
-                rows.push({ label: 'Erro Instagram', value: '<span style="color:#ef4444">' + data.instagram.error + '</span>' });
+                rows.push({ 
+                    label: '⚠️ Erro Instagram', 
+                    value: '<span style="color:#ef4444">' + data.instagram.error + '</span>' 
+                });
             }
 
             document.getElementById('status-rows').innerHTML = rows.map(r =>
-                '<div class="status-row"><span class="label">' + r.label + '</span><span class="value">' + r.value + '</span></div>'
+                '<div class="status-row">' +
+                    '<span class="label">' + r.label + '</span>' +
+                    '<span class="value">' + r.value + '</span>' +
+                '</div>'
             ).join('');
 
             document.getElementById('status-loading').classList.add('hidden');
             document.getElementById('status-content').classList.remove('hidden');
         }
 
+        // ============================================================
+        // AÇÕES
+        // ============================================================
         async function forceSync() {
             if (!confirm('Forçar sincronização agora?')) return;
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Sincronizando...';
+
             try {
                 const res = await fetch(API_BASE + '/api/refresh', {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + apiKey }
                 });
                 const data = await res.json();
-                alert(JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    alert(
+                        '✅ Sincronização concluída!\n\n' +
+                        'Páginas buscadas: ' + data.pagesFetched + '\n' +
+                        'Posts encontrados: ' + data.postsFetched + '\n' +
+                        'Posts novos: ' + data.newPosts + '\n' +
+                        'Total armazenado: ' + data.totalStored
+                    );
+                } else {
+                    alert('❌ Erro: ' + (data.error || 'desconhecido'));
+                }
+                
                 loadStatus();
             } catch (e) {
                 alert('Erro: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Forçar Sincronização';
             }
         }
 
         async function fullReset() {
-            if (!confirm('Isso apaga TODO o cache e recarrega do zero. Continuar?')) return;
+            if (!confirm('⚠️ ATENÇÃO!\n\nIsso apaga TODO o cache e recarrega do zero.\n\nContinuar?')) return;
+            
             try {
                 const res = await fetch(API_BASE + '/api/refresh?wipe=true', {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + apiKey }
                 });
                 const data = await res.json();
-                alert(JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    alert('✅ Reset completo! ' + data.totalStored + ' posts recarregados.');
+                } else {
+                    alert('❌ Erro: ' + (data.error || 'desconhecido'));
+                }
+                
                 loadStatus();
             } catch (e) {
                 alert('Erro: ' + e.message);
             }
         }
 
+        // ============================================================
+        // GERADOR DE CÓDIGO
+        // ============================================================
         function generateCode() {
             const limit = document.getElementById('cfg-limit').value;
             const layout = document.getElementById('cfg-layout').value;
             const columns = document.getElementById('cfg-columns').value;
+            const columnsTablet = document.getElementById('cfg-columns-tablet').value;
             const mobileColumns = document.getElementById('cfg-mobile-columns').value;
+            const gap = document.getElementById('cfg-gap').value;
+            const radius = document.getElementById('cfg-radius').value;
+            const aspect = document.getElementById('cfg-aspect').value;
+            const theme = document.getElementById('cfg-theme').value;
+            const showCaption = document.getElementById('cfg-show-caption').value;
+            const showDate = document.getElementById('cfg-show-date').value;
 
-            const code = '<div id="instagram-feed"\n' +
+            const code = 
+                '<div id="instagram-feed"\n' +
                 '     data-limit="' + limit + '"\n' +
                 '     data-layout="' + layout + '"\n' +
                 '     data-columns="' + columns + '"\n' +
-                '     data-mobile-columns="' + mobileColumns + '">\n' +
+                '     data-columns-tablet="' + columnsTablet + '"\n' +
+                '     data-mobile-columns="' + mobileColumns + '"\n' +
+                '     data-gap="' + gap + '"\n' +
+                '     data-radius="' + radius + '"\n' +
+                '     data-aspect-ratio="' + aspect + '"\n' +
+                '     data-theme="' + theme + '"\n' +
+                '     data-show-caption="' + showCaption + '"\n' +
+                '     data-show-date="' + showDate + '">\n' +
                 '</div>\n' +
                 '<script src="' + API_BASE + '/widget.js"><\/script>';
 
@@ -295,15 +478,31 @@
 
         function copyCode() {
             const text = document.getElementById('code-content').textContent;
-            navigator.clipboard.writeText(text);
-            alert('Código copiado!');
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const original = btn.textContent;
+                btn.textContent = '✅ Copiado!';
+                setTimeout(() => btn.textContent = original, 2000);
+            });
         }
 
+        // ============================================================
+        // PREVIEW
+        // ============================================================
         function loadPreview() {
-            const preview = document.getElementById('ig-feed-preview');
-            if (preview.dataset.igInitialized) return;
+            const preview = document.getElementById('instagram-feed');
+            
+            // Limpa o preview
+            preview.innerHTML = '';
+            delete preview.dataset.igInitialized;
+            preview.removeAttribute('data-ig-initialized');
+            
+            // Recria o script
+            const oldScript = document.querySelector('script[src*="widget.js"]');
+            if (oldScript) oldScript.remove();
+
             const script = document.createElement('script');
-            script.src = API_BASE + '/widget.js';
+            script.src = API_BASE + '/widget.js?t=' + Date.now();
             document.body.appendChild(script);
         }
     </script>
